@@ -85,6 +85,7 @@ typedef struct {
 typedef struct Monitor Monitor;
 typedef struct Client Client;
 struct Client {
+	int label;
 	char vmname[256];
 	char name[256];
 	float mina, maxa;
@@ -134,6 +135,8 @@ struct Monitor {
 };
 
 typedef struct {
+	int label;
+	const char *qube;
 	const char *class;
 	const char *instance;
 	const char *title;
@@ -299,6 +302,8 @@ applyrules(Client *c)
 	for (i = 0; i < LENGTH(rules); i++) {
 		r = &rules[i];
 		if ((!r->title || strstr(c->name, r->title))
+		&& (!r->label || (c->label == r->label))
+		&& (!r->qube || strstr(c->vmname, r->qube))
 		&& (!r->class || strstr(class, r->class))
 		&& (!r->instance || strstr(instance, r->instance)))
 		{
@@ -1085,6 +1090,7 @@ manage(Window w, XWindowAttributes *wa)
 		c->tags = t->tags;
 	} else {
 		c->mon = selmon;
+		c->label = getlabel(c);
 		applyrules(c);
 	}
 

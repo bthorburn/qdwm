@@ -40,12 +40,14 @@ static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
 
 static const Rule rules[] = {
 	/* xprop(1):
+	 *	_QUBES_LABEL(CARDINAL) = label
+	 *	_QUBES_VMNAME(STRING) = qube
 	 *	WM_CLASS(STRING) = instance, class
 	 *	WM_NAME(STRING) = title
 	 */
-	/* class      instance    title       tags mask     isfloating   monitor */
-	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
-	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
+	/* label  qube        class      instance    title       tags mask     isfloating   monitor */
+	 { 0,    "personal", "Gimp",     NULL,       NULL,       0,            1,           -1 },
+	 { 6,     NULL,      "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
 };
 
 /* layout(s) */

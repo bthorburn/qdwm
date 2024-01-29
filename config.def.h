@@ -12,10 +12,27 @@ static const char col_gray2[]       = "#444444";
 static const char col_gray3[]       = "#bbbbbb";
 static const char col_gray4[]       = "#eeeeee";
 static const char col_cyan[]        = "#005577";
+static const char col_black[]       = "#000000";
+static const char col_blue[]        = "#4363d8";
+static const char col_gray[]        = "#bebebe";
+static const char col_green[]       = "#3cb44b";
+static const char col_orange[]      = "#f58231";
+static const char col_purple[]      = "#9a009a";
+static const char col_red[]         = "#e6194b";
+static const char col_white[]       = "#ffffff";
+static const char col_yellow[]      = "#ffe119";
 static const char *colors[][3]      = {
-	/*               fg         bg         border   */
-	[SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
-	[SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
+	/*fg         bg          border   */
+	{ col_black, col_white,  col_white  }, /* SchemeSel dom0    */
+	{ col_white, col_red,    col_red    }, /* SchemeSel label 1 */
+	{ col_white, col_orange, col_orange }, /* SchemeSel label 2 */
+	{ col_white, col_yellow, col_yellow }, /* SchemeSel label 3 */
+	{ col_white, col_green,  col_green  }, /* SchemeSel label 4 */
+	{ col_white, col_gray,   col_gray   }, /* SchemeSel label 5 */
+	{ col_white, col_blue,   col_blue   }, /* SchemeSel label 6 */
+	{ col_white, col_purple, col_purple }, /* SchemeSel label 7 */
+	{ col_white, col_black,  col_black  }, /* SchemeSel label 8 */
+	{ col_gray3, col_gray1,  col_gray2  }, /* SchemeNorm        */
 };
 
 /* tagging */

@@ -59,11 +59,11 @@
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel }; /* color schemes */
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
        NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
+enum { QubesLabel, QubesVMName, QubesLast }; /* QubesOS atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
 
@@ -85,6 +85,7 @@ typedef struct {
 typedef struct Monitor Monitor;
 typedef struct Client Client;
 struct Client {
+	char vmname[256];
 	char name[256];
 	float mina, maxa;
 	int x, y, w, h;
@@ -170,6 +171,7 @@ static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
+static int getlabel(Client *c);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
@@ -236,6 +238,7 @@ static void zoom(const Arg *arg);
 
 /* variables */
 static const char broken[] = "broken";
+static const char dom0[] = "dom0";
 static char stext[256];
 static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
@@ -259,8 +262,10 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[PropertyNotify] = propertynotify,
 	[UnmapNotify] = unmapnotify
 };
-static Atom wmatom[WMLast], netatom[NetLast];
+static Atom wmatom[WMLast], netatom[NetLast], qubesatom[QubesLast];
 static int running = 1;
+static int SchemeSel = 0;
+static const int SchemeNorm = 9;
 static Cur *cursor[CurLast];
 static Clr **scheme;
 static Display *dpy;
@@ -704,6 +709,9 @@ drawbar(Monitor *m)
 	unsigned int i, occ = 0, urg = 0;
 	Client *c;
 
+	int size;
+	char *fullname = NULL;
+
 	if (!m->showbar)
 		return;
 
@@ -737,7 +745,11 @@ drawbar(Monitor *m)
 	if ((w = m->ww - tw - x) > bh) {
 		if (m->sel) {
 			drw_setscheme(drw, scheme[m == selmon ? SchemeSel : SchemeNorm]);
-			drw_text(drw, x, 0, w, bh, lrpad / 2, m->sel->name, 0);
+			size = strlen(m->sel->vmname) + strlen(m->sel->name) + 4;
+			fullname = ecalloc(size, 1);
+			snprintf(fullname, size, "[%s] %s", m->sel->vmname, m->sel->name);
+			drw_text(drw, x, 0, w, bh, lrpad / 2, fullname, 0);
+			XFree(fullname);
 			if (m->sel->isfloating)
 				drw_rect(drw, x + boxs, boxs, boxw, boxw, m->sel->isfixed, 0);
 		} else {
@@ -801,6 +813,7 @@ focus(Client *c)
 		detachstack(c);
 		attachstack(c);
 		grabbuttons(c, 1);
+		SchemeSel = getlabel(c);
 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
 		setfocus(c);
 	} else {
@@ -875,6 +888,28 @@ getatomprop(Client *c, Atom prop)
 		XFree(p);
 	}
 	return atom;
+}
+
+int
+getlabel(Client *c)
+{
+	Atom actual_type;
+	int actual_format;
+	unsigned long nitems;
+	unsigned long nbytes;
+	char *value = 0;
+	int result;
+
+	XGetWindowProperty(dpy, c->win, qubesatom[QubesLabel], 0, 1, False, XA_CARDINAL,
+		&actual_type, &actual_format, &nitems, &nbytes, (unsigned char **) &value);
+
+	if (nitems) {
+		result = (int)*value;
+	} else {
+		result = 0;
+	}
+	XFree(value);
+	return result;
 }
 
 int
@@ -1245,7 +1280,7 @@ propertynotify(XEvent *e)
 			drawbars();
 			break;
 		}
-		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
+		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName] || ev->atom == qubesatom[QubesVMName]) {
 			updatetitle(c);
 			if (c == c->mon->sel)
 				drawbar(c->mon);
@@ -1579,6 +1614,9 @@ setup(void)
 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
+	/* init QubesOS atoms */
+	qubesatom[QubesLabel] = XInternAtom(dpy, "_QUBES_LABEL", False);
+	qubesatom[QubesVMName] = XInternAtom(dpy, "_QUBES_VMNAME", False);
 	/* init cursors */
 	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
 	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
@@ -2013,6 +2051,8 @@ updatestatus(void)
 void
 updatetitle(Client *c)
 {
+	if (!gettextprop(c->win, qubesatom[QubesVMName], c->vmname, sizeof c->vmname))
+		strcpy(c->vmname, dom0);
 	if (!gettextprop(c->win, netatom[NetWMName], c->name, sizeof c->name))
 		gettextprop(c->win, XA_WM_NAME, c->name, sizeof c->name);
 	if (c->name[0] == '\0') /* hack to mark broken clients */

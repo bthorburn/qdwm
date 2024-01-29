@@ -7,33 +7,45 @@ static const int showbar            = 1;        /* 0 means no bar */
 static const int topbar             = 1;        /* 0 means bottom bar */
 static const char *fonts[]          = { "monospace:size=10" };
 static const char dmenufont[]       = "monospace:size=10";
-static const char col_gray1[]       = "#222222";
-static const char col_gray2[]       = "#444444";
-static const char col_gray3[]       = "#bbbbbb";
-static const char col_gray4[]       = "#eeeeee";
-static const char col_cyan[]        = "#005577";
-static const char col_black[]       = "#000000";
-static const char col_blue[]        = "#4363d8";
-static const char col_gray[]        = "#bebebe";
-static const char col_green[]       = "#3cb44b";
-static const char col_orange[]      = "#f58231";
-static const char col_purple[]      = "#9a009a";
-static const char col_red[]         = "#e6194b";
-static const char col_white[]       = "#ffffff";
-static const char col_yellow[]      = "#ffe119";
-static const char *colors[][3]      = {
-	/*fg         bg          border   */
-	{ col_black, col_white,  col_white  }, /* SchemeSel dom0    */
-	{ col_white, col_red,    col_red    }, /* SchemeSel label 1 */
-	{ col_white, col_orange, col_orange }, /* SchemeSel label 2 */
-	{ col_white, col_yellow, col_yellow }, /* SchemeSel label 3 */
-	{ col_white, col_green,  col_green  }, /* SchemeSel label 4 */
-	{ col_white, col_gray,   col_gray   }, /* SchemeSel label 5 */
-	{ col_white, col_blue,   col_blue   }, /* SchemeSel label 6 */
-	{ col_white, col_purple, col_purple }, /* SchemeSel label 7 */
-	{ col_white, col_black,  col_black  }, /* SchemeSel label 8 */
-	{ col_gray3, col_gray1,  col_gray2  }, /* SchemeNorm        */
+
+static const char col_label_00[] = "#eceff4"; /* White          */
+static const char col_label_01[] = "#bf616a"; /* Red            */
+static const char col_label_02[] = "#d08770"; /* Orange         */
+static const char col_label_03[] = "#ebcb8b"; /* Yellow         */
+static const char col_label_04[] = "#a3be8c"; /* Green          */
+static const char col_label_05[] = "#bebebe"; /* Grey           */
+static const char col_label_06[] = "#4363d8"; /* Blue           */
+static const char col_label_07[] = "#b48ead"; /* Purple         */
+static const char col_label_08[] = "#4c566a"; /* Black          */
+static const char col_label_09[] = "#232323"; /* SchemeNorm     */
+static const char col_label_10[] = "#222222"; /* SchemeStatus   */     
+static const char col_label_11[] = "#2e3440"; /* SchemeTagsNorm */
+static const char col_label_12[] = "#3b4252"; /* SchemeTagsSel  */
+static const char col_label_13[] = "#434c5e"; /* SchemeInfoNorm */
+static const char col_label_14[] = "#434c5e"; /* SchemeInfoSel  */
+static const char col_label_15[] = "#d8dee9"; /* TextNorm       */
+static const char col_label_16[] = "#e5e9f0"; /* TextSel        */
+
+
+static const char *colors[][3]      = {	
+  /* { fg, bg, border } */
+  { col_label_09, col_label_00, col_label_00 }, /* [0] SchemeSel dom0      */
+  { col_label_16, col_label_01, col_label_01 }, /* [1] SchemeSel label 1   */
+  { col_label_16, col_label_02, col_label_02 }, /* [2] SchemeSel label 2   */
+  { col_label_16, col_label_03, col_label_03 }, /* [3] SchemeSel label 3   */
+  { col_label_16, col_label_04, col_label_04 }, /* [4] SchemeSel label 4   */
+  { col_label_16, col_label_05, col_label_05 }, /* [5] SchemeSel label 5   */
+  { col_label_16, col_label_06, col_label_06 }, /* [6] SchemeSel label 6   */
+  { col_label_16, col_label_07, col_label_07 }, /* [7] SchemeSel label 7   */ 
+  { col_label_16, col_label_08, col_label_08 }, /* [8] SchemeSel label 8   */
+  { col_label_15, col_label_09, col_label_09 }, /* [9] SchemeNorm          */
+  { col_label_15, col_label_10, "#000000"    }, /* [10] SchemeStatus       */ 
+  { col_label_15, col_label_11, "#000000"    }, /* [11] SchemeTagsNorm     */
+  { col_label_16, col_label_12, "#000000"    }, /* [12] SchemeTagsSel      */
+  { col_label_15, col_label_13, "#000000"    }, /* [13] SchemeInfoNorm     */
+  { col_label_16, col_label_14, "#000000"    }, /* [14] SchemeInfoSel      */
 };
+
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
@@ -76,7 +88,24 @@ static const Layout layouts[] = {
 
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
-static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
+
+static const char *dmenucmd[] = {
+  "dmenu_run",
+  "-m",
+  dmenumon,
+  "-fn",
+  dmenufont,
+  "-nb",
+  col_label_16,
+  "-nf",
+  col_label_09,
+  "-sb",
+  col_label_10,
+  "-sf",
+  col_label_02,
+  NULL
+};
+
 static const char *termcmd[]  = { "st", NULL };
 
 static const Key keys[] = {
@@ -132,4 +161,3 @@ static const Button buttons[] = {
 	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
 	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
 };
-

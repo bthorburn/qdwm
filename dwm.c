@@ -58,14 +58,49 @@
 #define TEXTW(X)                (drw_fontset_getwidth(drw, (X)) + lrpad)
 
 /* enums */
-enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
-       NetWMFullscreen, NetActiveWindow, NetWMWindowType,
-       NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
-enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
-enum { QubesLabel, QubesVMName, QubesLast }; /* QubesOS atoms */
-enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
-       ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
+enum {
+  CurNormal,
+  CurResize,
+  CurMove,
+  CurLast
+}; /* cursor */
+
+enum {
+  NetSupported,
+  NetWMName,
+  NetWMState,
+  NetWMCheck,
+  NetWMFullscreen,
+  NetActiveWindow,
+  NetWMWindowType,
+  NetWMWindowTypeDialog,
+  NetClientList,
+  NetLast
+}; /* EWMH atoms */
+
+enum {
+  WMProtocols,
+  WMDelete,
+  WMState,
+  WMTakeFocus,
+  WMLast
+}; /* default atoms */
+
+enum {
+  QubesLabel,
+  QubesVMName,
+  QubesLast
+}; /* QubesOS atoms */
+
+enum {
+  ClkTagBar,
+  ClkLtSymbol,
+  ClkStatusText,
+  ClkWinTitle,
+  ClkClientWin,
+  ClkRootWin,
+  ClkLast
+}; /* clicks */
 
 typedef union {
 	int i;
@@ -269,6 +304,11 @@ static Atom wmatom[WMLast], netatom[NetLast], qubesatom[QubesLast];
 static int running = 1;
 static int SchemeSel = 0;
 static const int SchemeNorm = 9;
+static const int SchemeStatus = 10;
+static const int SchemeTagsNorm = 11;
+static const int SchemeTagsSel = 12;
+static const int SchemeInfoNorm = 13;
+//static const int SchemeInfoSel = 14;
 static Cur *cursor[CurLast];
 static Clr **scheme;
 static Display *dpy;
@@ -722,7 +762,7 @@ drawbar(Monitor *m)
 
 	/* draw status first so it can be overdrawn by tags later */
 	if (m == selmon) { /* status is only drawn on selected monitor */
-		drw_setscheme(drw, scheme[SchemeNorm]);
+		drw_setscheme(drw, scheme[SchemeStatus]);
 		tw = TEXTW(stext) - lrpad + 2; /* 2px right padding */
 		drw_text(drw, m->ww - tw, 0, tw, bh, 0, stext, 0);
 	}
@@ -735,7 +775,7 @@ drawbar(Monitor *m)
 	x = 0;
 	for (i = 0; i < LENGTH(tags); i++) {
 		w = TEXTW(tags[i]);
-		drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
+		drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagsSel : SchemeTagsNorm]);
 		drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
 		if (occ & 1 << i)
 			drw_rect(drw, x + boxs, boxs, boxw, boxw,
@@ -744,12 +784,12 @@ drawbar(Monitor *m)
 		x += w;
 	}
 	w = TEXTW(m->ltsymbol);
-	drw_setscheme(drw, scheme[SchemeNorm]);
+	drw_setscheme(drw, scheme[SchemeTagsNorm]);
 	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
 	if ((w = m->ww - tw - x) > bh) {
 		if (m->sel) {
-			drw_setscheme(drw, scheme[m == selmon ? SchemeSel : SchemeNorm]);
+			drw_setscheme(drw, scheme[m == selmon ? SchemeSel : SchemeInfoNorm]);
 			size = strlen(m->sel->vmname) + strlen(m->sel->name) + 4;
 			fullname = ecalloc(size, 1);
 			snprintf(fullname, size, "[%s] %s", m->sel->vmname, m->sel->name);
@@ -758,7 +798,7 @@ drawbar(Monitor *m)
 			if (m->sel->isfloating)
 				drw_rect(drw, x + boxs, boxs, boxw, boxw, m->sel->isfixed, 0);
 		} else {
-			drw_setscheme(drw, scheme[SchemeNorm]);
+			drw_setscheme(drw, scheme[SchemeInfoNorm]);
 			drw_rect(drw, x, 0, w, bh, 1, 1);
 		}
 	}

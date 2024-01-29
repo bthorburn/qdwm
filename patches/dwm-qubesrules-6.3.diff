@@ -1,0 +1,76 @@
+From: 3o14r473 <3o14@pm.me> E4FE E61C 3B02 F4CA B6D8  0CA7 F105 757D 34BE FA98
+Donate: monero:41rMoMLvk8hEJYP2vbv3dNUGzN95CLXoANAtmAVaUxzse5KfPjhkE7d4PUwh8kCkF16FwwqfZTmS4ZKmYCjrsFAcGXTPpwH
+Subject: [PATCH] dwm-qubesrules-6.3.diff 
+
+This patch allows dwm to use QubesOS-specific
+window properties, _QUBES_LABEL and _QUBES_VMNAME, in its rulematching.
+
+It needs to be applied on top of the qubesdecorations patch.
+---
+ config.def.h | 8 +++++---
+ dwm.c        | 6 ++++++
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/config.def.h b/config.def.h
+index 42dce05..b246392 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -40,12 +40,14 @@ static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+ 
+ static const Rule rules[] = {
+ 	/* xprop(1):
++	 *	_QUBES_LABEL(CARDINAL) = label
++	 *	_QUBES_VMNAME(STRING) = qube
+ 	 *	WM_CLASS(STRING) = instance, class
+ 	 *	WM_NAME(STRING) = title
+ 	 */
+-	/* class      instance    title       tags mask     isfloating   monitor */
+-	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
+-	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
++	/* label  qube        class      instance    title       tags mask     isfloating   monitor */
++	 { 0,    "personal", "Gimp",     NULL,       NULL,       0,            1,           -1 },
++	 { 6,     NULL,      "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
+ };
+ 
+ /* layout(s) */
+diff --git a/dwm.c b/dwm.c
+index be99dde..9a71902 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -86,6 +86,7 @@ typedef struct {
+ typedef struct Monitor Monitor;
+ typedef struct Client Client;
+ struct Client {
++	int label;
+ 	char vmname[256];
+ 	char name[256];
+ 	float mina, maxa;
+@@ -135,6 +136,8 @@ struct Monitor {
+ };
+ 
+ typedef struct {
++	int label;
++	const char *qube;
+ 	const char *class;
+ 	const char *instance;
+ 	const char *title;
+@@ -301,6 +304,8 @@ applyrules(Client *c)
+ 	for (i = 0; i < LENGTH(rules); i++) {
+ 		r = &rules[i];
+ 		if ((!r->title || strstr(c->name, r->title))
++		&& (!r->label || (c->label == r->label))
++		&& (!r->qube || strstr(c->vmname, r->qube))
+ 		&& (!r->class || strstr(class, r->class))
+ 		&& (!r->instance || strstr(instance, r->instance)))
+ 		{
+@@ -1076,6 +1081,7 @@ manage(Window w, XWindowAttributes *wa)
+ 		c->tags = t->tags;
+ 	} else {
+ 		c->mon = selmon;
++		c->label = getlabel(c);
+ 		applyrules(c);
+ 	}
+ 
+-- 
+2.30.2
+

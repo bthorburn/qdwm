@@ -1,0 +1,193 @@
+From: 3o14r473 <3o14@pm.me> E4FE E61C 3B02 F4CA B6D8  0CA7 F105 757D 34BE FA98
+Donate: monero:41rMoMLvk8hEJYP2vbv3dNUGzN95CLXoANAtmAVaUxzse5KfPjhkE7d4PUwh8kCkF16FwwqfZTmS4ZKmYCjrsFAcGXTPpwH
+Subject: [PATCH] dwm-qubesdecorations-6.3.diff
+
+This patch enables dwm to read QubesOS-specific window properties and use the
+windowborders, titlebar and tagbar to indicate to the user what qube the
+focused window belongs to.
+
+Each qube-label gets its own SchemeSel colorscheme that can be conviniently configured in config.def.h
+---
+ config.def.h | 23 ++++++++++++++++++++---
+ dwm.c        | 47 ++++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 64 insertions(+), 6 deletions(-)
+
+diff --git a/config.def.h b/config.def.h
+index a2ac963..42dce05 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -12,10 +12,27 @@ static const char col_gray2[]       = "#444444";
+ static const char col_gray3[]       = "#bbbbbb";
+ static const char col_gray4[]       = "#eeeeee";
+ static const char col_cyan[]        = "#005577";
++static const char col_black[]       = "#000000";
++static const char col_blue[]        = "#4363d8";
++static const char col_gray[]        = "#bebebe";
++static const char col_green[]       = "#3cb44b";
++static const char col_orange[]      = "#f58231";
++static const char col_purple[]      = "#9a009a";
++static const char col_red[]         = "#e6194b";
++static const char col_white[]       = "#ffffff";
++static const char col_yellow[]      = "#ffe119";
+ static const char *colors[][3]      = {
+-	/*               fg         bg         border   */
+-	[SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
+-	[SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
++	/*fg         bg          border   */
++	{ col_black, col_white,  col_white  }, /* SchemeSel dom0    */
++	{ col_white, col_red,    col_red    }, /* SchemeSel label 1 */
++	{ col_white, col_orange, col_orange }, /* SchemeSel label 2 */
++	{ col_white, col_yellow, col_yellow }, /* SchemeSel label 3 */
++	{ col_white, col_green,  col_green  }, /* SchemeSel label 4 */
++	{ col_white, col_gray,   col_gray   }, /* SchemeSel label 5 */
++	{ col_white, col_blue,   col_blue   }, /* SchemeSel label 6 */
++	{ col_white, col_purple, col_purple }, /* SchemeSel label 7 */
++	{ col_white, col_black,  col_black  }, /* SchemeSel label 8 */
++	{ col_gray3, col_gray1,  col_gray2  }, /* SchemeNorm        */
+ };
+ 
+ /* tagging */
+diff --git a/dwm.c b/dwm.c
+index a96f33c..be99dde 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -59,11 +59,11 @@
+ 
+ /* enums */
+ enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
+-enum { SchemeNorm, SchemeSel }; /* color schemes */
+ enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
+        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
+        NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
+ enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
++enum { QubesLabel, QubesVMName, QubesLast }; /* QubesOS atoms */
+ enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
+        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
+ 
+@@ -85,6 +86,7 @@ typedef struct {
+ typedef struct Monitor Monitor;
+ typedef struct Client Client;
+ struct Client {
++	char vmname[256];
+ 	char name[256];
+ 	float mina, maxa;
+ 	int x, y, w, h;
+@@ -170,6 +172,7 @@ static void focusin(XEvent *e);
+ static void focusmon(const Arg *arg);
+ static void focusstack(const Arg *arg);
+ static Atom getatomprop(Client *c, Atom prop);
++static int getlabel(Client *c);
+ static int getrootptr(int *x, int *y);
+ static long getstate(Window w);
+ static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
+@@ -237,6 +240,7 @@ static void zoom(const Arg *arg);
+ 
+ /* variables */
+ static const char broken[] = "broken";
++static const char dom0[] = "dom0";
+ static char stext[256];
+ static int screen;
+ static int sw, sh;           /* X display screen geometry width, height */
+@@ -260,8 +264,10 @@ static void (*handler[LASTEvent]) (XEvent *) = {
+ 	[PropertyNotify] = propertynotify,
+ 	[UnmapNotify] = unmapnotify
+ };
+-static Atom wmatom[WMLast], netatom[NetLast];
++static Atom wmatom[WMLast], netatom[NetLast], qubesatom[QubesLast];
+ static int running = 1;
++static int SchemeSel = 0;
++static const int SchemeNorm = 9;
+ static Cur *cursor[CurLast];
+ static Clr **scheme;
+ static Display *dpy;
+@@ -702,6 +708,9 @@ drawbar(Monitor *m)
+ 	unsigned int i, occ = 0, urg = 0;
+ 	Client *c;
+ 
++	int size;
++	char *fullname = NULL;
++
+ 	if (!m->showbar)
+ 		return;
+ 
+@@ -735,7 +744,11 @@ drawbar(Monitor *m)
+ 	if ((w = m->ww - tw - x) > bh) {
+ 		if (m->sel) {
+ 			drw_setscheme(drw, scheme[m == selmon ? SchemeSel : SchemeNorm]);
+-			drw_text(drw, x, 0, w, bh, lrpad / 2, m->sel->name, 0);
++			size = strlen(m->sel->vmname) + strlen(m->sel->name) + 4;
++			fullname = ecalloc(size, 1);
++			snprintf(fullname, size, "[%s] %s", m->sel->vmname, m->sel->name);
++			drw_text(drw, x, 0, w, bh, lrpad / 2, fullname, 0);
++			XFree(fullname);
+ 			if (m->sel->isfloating)
+ 				drw_rect(drw, x + boxs, boxs, boxw, boxw, m->sel->isfixed, 0);
+ 		} else {
+@@ -799,6 +812,7 @@ focus(Client *c)
+ 		detachstack(c);
+ 		attachstack(c);
+ 		grabbuttons(c, 1);
++		SchemeSel = getlabel(c);
+ 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
+ 		setfocus(c);
+ 	} else {
+@@ -875,6 +889,28 @@ getatomprop(Client *c, Atom prop)
+ 	return atom;
+ }
+ 
++int
++getlabel(Client *c)
++{
++	Atom actual_type;
++	int actual_format;
++	unsigned long nitems;
++	unsigned long nbytes;
++	char *value = 0;
++	int result;
++
++	XGetWindowProperty(dpy, c->win, qubesatom[QubesLabel], 0, 1, False, XA_CARDINAL,
++		&actual_type, &actual_format, &nitems, &nbytes, (unsigned char **) &value);
++
++	if (nitems) {
++		result = (int)*value;
++	} else {
++		result = 0;
++	}
++	XFree(value);
++	return result;
++}
++
+ int
+ getrootptr(int *x, int *y)
+ {
+@@ -1239,7 +1275,7 @@ propertynotify(XEvent *e)
+ 			drawbars();
+ 			break;
+ 		}
+-		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
++		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName] || ev->atom == qubesatom[QubesVMName]) {
+ 			updatetitle(c);
+ 			if (c == c->mon->sel)
+ 				drawbar(c->mon);
+@@ -1566,6 +1602,9 @@ setup(void)
+ 	netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+ 	netatom[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+ 	netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
++	/* init QubesOS atoms */
++	qubesatom[QubesLabel] = XInternAtom(dpy, "_QUBES_LABEL", False);
++	qubesatom[QubesVMName] = XInternAtom(dpy, "_QUBES_VMNAME", False);
+ 	/* init cursors */
+ 	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
+ 	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
+@@ -2001,6 +2040,8 @@ updatestatus(void)
+ void
+ updatetitle(Client *c)
+ {
++	if (!gettextprop(c->win, qubesatom[QubesVMName], c->vmname, sizeof c->vmname))
++		strcpy(c->vmname, dom0);
+ 	if (!gettextprop(c->win, netatom[NetWMName], c->name, sizeof c->name))
+ 		gettextprop(c->win, XA_WM_NAME, c->name, sizeof c->name);
+ 	if (c->name[0] == '\0') /* hack to mark broken clients */
+-- 
+2.30.2
+
